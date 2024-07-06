@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-07-06 14:35+0000\n"
+"POT-Creation-Date: 2024-07-06 16:58+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1223,6 +1223,10 @@ msgstr ""
 
 #: env/lib/python3.12/site-packages/django/views/templates/default_urlconf.html:248
 msgid "Connect, get help, or contribute"
+msgstr ""
+
+#: movies/apps.py:8
+msgid "movies"
 msgstr ""
 
 #: movies/models.py:28 movies/models.py:44
