@@ -17,6 +17,7 @@ class GenreFilmworkInline(admin.TabularInline):
 class FilmworkAdmin(admin.ModelAdmin):
     inlines = (GenreFilmworkInline,)
     list_display = ('title', 'type', 'creation_date', 'rating',)
+    search_fields = ('title', 'description', 'id')
 
 
 @admin.register(Person)
