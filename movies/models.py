@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 
 # Определим два миксина
 class TimeStampedMixin(models.Model):
-    created = models.DateTimeField(auto_now_add=True)
+    created = models.DateTimeField(_('created'), auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
 
     class Meta:
