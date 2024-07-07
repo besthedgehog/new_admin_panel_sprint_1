@@ -1233,7 +1233,7 @@ msgstr "Кинопроизведения"
 
 #: movies/models.py:28 movies/models.py:44
 msgid "name"
-msgstr ""
+msgstr "Название"
 
 #: movies/models.py:30 movies/models.py:45
 msgid "description"
