@@ -51,8 +51,13 @@ class Filmwork(UUIDMixin, TimeStampedMixin):
         movie = ('MOV', 'movie')
         tv_show = ('TV', 'tv_show')
 
+        class Meta:
+            verbose_name = _('type')
+            verbose_name_plural = _('types')
+
     type = models.CharField(
-        max_length=7,
+        _('type'),
+        max_length=50,
         choices=Type.choices,
         default=Type.movie
     )

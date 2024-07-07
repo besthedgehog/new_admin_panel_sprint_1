@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-07-07 10:03+0000\n"
+"POT-Creation-Date: 2024-07-07 10:48+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1259,22 +1259,30 @@ msgstr ""
 msgid "file"
 msgstr ""
 
-#: movies/models.py:65
+#: movies/models.py:55 movies/models.py:59
+msgid "type"
+msgstr "Тип"
+
+#: movies/models.py:56
+msgid "types"
+msgstr "Типы"
+
+#: movies/models.py:70
 msgid "Filmwork"
 msgstr "Кинопроизведение"
 
-#: movies/models.py:66
+#: movies/models.py:71
 msgid "Filmworks"
 msgstr "Кинопроизведения"
 
-#: movies/models.py:68
+#: movies/models.py:73
 msgid "rating"
 msgstr "Рейтинг"
 
-#: movies/models.py:95
+#: movies/models.py:100
 msgid "Person"
 msgstr "Человек"
 
-#: movies/models.py:96
+#: movies/models.py:101
 msgid "People"
 msgstr "Люди"
