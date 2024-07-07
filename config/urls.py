@@ -16,8 +16,19 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+# from django.urls import path
+from django.urls import include, path
+from debug_toolbar.toolbar import debug_toolbar_urls
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-]
+] + debug_toolbar_urls()
+
+
+# from django.views.defaults import page_not_found
+#
+# urlpatterns = [
+#     path('', page_not_found, {'exception': Exception('Page not Found')}),
+#     path('admin/', admin.site.urls),
+#     path('__debug__/', include('debug_toolbar.urls')),
+# ]
