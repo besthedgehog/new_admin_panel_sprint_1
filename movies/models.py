@@ -89,7 +89,11 @@ class GenreFilmwork(UUIDMixin):
 
 
 class Person(models.Model):
-    pass
+
+# Класс мета я добавил сам для перевода
+    class Meta:
+        verbose_name = _("Person")
+        verbose_name_plural = _("People")
 
 class PersonFilmwork(UUIDMixin):
     film_work = models.ForeignKey('Filmwork', on_delete=models.CASCADE)
