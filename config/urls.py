@@ -24,11 +24,3 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 ] + debug_toolbar_urls()
 
-
-# from django.views.defaults import page_not_found
-#
-# urlpatterns = [
-#     path('', page_not_found, {'exception': Exception('Page not Found')}),
-#     path('admin/', admin.site.urls),
-#     path('__debug__/', include('debug_toolbar.urls')),
-# ]
