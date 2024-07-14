@@ -16,6 +16,14 @@ sqlite_to_python_types = {
     "NUMERIC": float
 }
 
+class Data:
+    '''
+    В экземплярах класса будет содеражаться вся информация
+    о таблицах из базы данных
+    '''
+    pass
+
+
 def create_dataclass_from_table(cursor, table_name: str):
     # Получаем информацию о колонках таблицы
     cursor.execute(f"PRAGMA table_info({table_name})")
@@ -39,6 +47,7 @@ def fetch_data_as_dataclass(db_path: str):
 
     for table in tables:
         # print(table) ################
+        raise Exception('Стоп')
         table_name = table[0]  # Извлекаем имя таблицы из кортежа
 
 
@@ -57,13 +66,14 @@ def fetch_data_as_dataclass(db_path: str):
     return data
 
 # Пример использования
-db_path = 'db.sqlite'
-data = fetch_data_as_dataclass(db_path)
+# db_path = 'db.sqlite'
+# data = fetch_data_as_dataclass(db_path)
 #
 # for table_name, records in data.items():
 #     print(f"Table: {table_name}")
 #     for record in records:
 #         print(record)
+
 
 def get_all_information_from_sql(conn):
     '''
@@ -82,74 +92,63 @@ def get_all_information_from_sql(conn):
     # Получим название таблиц и SQL-команды для их создания
     for table in tables:
         list_with_data = [table[2], table[-1]]
-        print()
-        print(list_with_data) ################
-        print()
         data_from_all_tables.append(list_with_data)
 
-    # Получим unique индексы
-    # cursor.execute("SELECT * FROM sqlite_master WHERE type='table';")
-    # cursor.execute(f"PRAGMA index_list({table_name});")
+    # Добавим полученную информацию в класс
+    list_with_classes = list()
 
-    # for name_of_table in
+    for name_of_table, sql_command in data_from_all_tables:
+        tmp = Data()
+        tmp.name_of_table = name_of_table
+        tmp.sql_command = sql_command
+        list_with_classes.append(tmp)
 
-    return data_from_all_tables
-
-
-def get_unique_indexes(conn):
-    # conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    # Получаем список всех таблиц в базе данных
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = cursor.fetchall()
+    # Создадим переменную со списком названий всех таблиц
+    table_names = [entry.name_of_table for entry in list_with_classes]
 
     unique_indexes = dict()
 
-
-
-    for table_name in tables:
-        table_name = table_name[0]  # Извлекаем имя таблицы из кортежа ('genre',)
-        cursor.execute(f"PRAGMA index_list({table_name});") # все индексы, которые есть в таблице
+    for table_name in table_names:
+        cursor.execute(f"PRAGMA index_list({table_name});")  # все индексы, которые есть в таблице
         indexes = cursor.fetchall()
-
-        # ic | indexes: [(0, 'film_work_genre', 1, 'c', 0),
-        #                (1, 'sqlite_autoindex_genre_film_work_1', 1, 'pk', 0)]
-
 
         table_indexes = []
         for index in indexes:
-            index_name = index[1] # (0, 'film_work_genre', 1, 'c', 0)
+            index_name = index[1]
             if index[2] == 1:  # Проверяем, является ли индекс уникальным
-                cursor.execute(f"PRAGMA index_info({index_name});") # все колонки, в которых встречается этот индекс
-                index_info = cursor.fetchall() # ic| index_info: [(0, 1, 'film_work_id'), (1, 2, 'genre_id')]
+                cursor.execute(f"PRAGMA index_info({index_name});")  # все колонки, в которых встречается этот индекс
+                index_info = cursor.fetchall()
                 columns = [col[2] for col in index_info]
                 table_indexes.append((index_name, columns))
 
         if table_indexes:
             unique_indexes[table_name] = table_indexes
 
-    # ic(unique_indexes)
+    # Отладочный вывод уникальных индексов
+    # print(unique_indexes)
 
     table_of_unique_indexes = dict()
 
-    print(unique_indexes)
-    print()
-
-
     for table, indexes in unique_indexes.items():
         for index_name, columns in indexes:
-            print(*columns)
             if table not in table_of_unique_indexes:
                 table_of_unique_indexes[table] = []
             table_of_unique_indexes[table].append({index_name: columns})
 
-    for table, indexes in unique_indexes.items():
-        print(f"Table: {table}")
-        for index_name, columns in indexes:
-            print(f"  Unique Index: {index_name}, Columns: {', '.join(columns)}")
-    return table_of_unique_indexes
 
+    for attribite in list_with_classes:
+        if attribite.name_of_table in table_of_unique_indexes.keys():
+            attribite.index_info = table_of_unique_indexes[attribite.name_of_table]
+        else:
+            raise Exception('Что-то пошло не так')
+
+        ic(attribite.__dict__)
+
+
+
+    # ic(table_of_unique_indexes)
+    # ic(table_names)
+    return data_from_all_tables
 
 
 
@@ -166,8 +165,8 @@ def main():
     with sqlite3.connect('db.sqlite') as sqlite_conn, psycopg.connect(
         **dsl, row_factory=dict_row, cursor_factory=ClientCursor
     ) as pg_conn:
-        ic(get_unique_indexes(sqlite_conn))
-        # get_all_information_from_sql(sqlite_conn)
+        # get_unique_indexes(sqlite_conn)
+        get_all_information_from_sql(sqlite_conn)
         # unique_indexes = get_unique_indexes(sqlite_conn)
         # for table, indexes in unique_indexes.items():
         #     print(f"Table: {table}")
