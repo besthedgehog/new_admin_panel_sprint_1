@@ -5,6 +5,8 @@ import psycopg
 from psycopg import ClientCursor, connection as _connection
 from psycopg.rows import dict_row
 
+from icecream import ic
+
 # Словарь для сопоставления типов данных SQLite с типами Python
 sqlite_to_python_types = {
     "INTEGER": int,
@@ -86,54 +88,69 @@ def get_all_information_from_sql(conn):
         data_from_all_tables.append(list_with_data)
 
     # Получим unique индексы
-    cursor.execute("SELECT * FROM sqlite_master WHERE type='table';")
-    cursor.execute(f"PRAGMA index_list({table_name});")
+    # cursor.execute("SELECT * FROM sqlite_master WHERE type='table';")
+    # cursor.execute(f"PRAGMA index_list({table_name});")
 
-    for name_of_table in
+    # for name_of_table in
 
     return data_from_all_tables
 
 
-
-# import sqlite3
-#
-def get_unique_indexes(db_path: str):
-    conn = sqlite3.connect(db_path)
+def get_unique_indexes(conn):
+    # conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     # Получаем список всех таблиц в базе данных
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = cursor.fetchall()
 
-    unique_indexes = {}
+    unique_indexes = dict()
+
+
 
     for table_name in tables:
-        table_name = table_name[0]  # Извлекаем имя таблицы из кортежа
-        cursor.execute(f"PRAGMA index_list({table_name});")
+        table_name = table_name[0]  # Извлекаем имя таблицы из кортежа ('genre',)
+        cursor.execute(f"PRAGMA index_list({table_name});") # все индексы, которые есть в таблице
         indexes = cursor.fetchall()
+
+        # ic | indexes: [(0, 'film_work_genre', 1, 'c', 0),
+        #                (1, 'sqlite_autoindex_genre_film_work_1', 1, 'pk', 0)]
+
 
         table_indexes = []
         for index in indexes:
-            index_name = index[1]
+            index_name = index[1] # (0, 'film_work_genre', 1, 'c', 0)
             if index[2] == 1:  # Проверяем, является ли индекс уникальным
-                cursor.execute(f"PRAGMA index_info({index_name});")
-                index_info = cursor.fetchall()
+                cursor.execute(f"PRAGMA index_info({index_name});") # все колонки, в которых встречается этот индекс
+                index_info = cursor.fetchall() # ic| index_info: [(0, 1, 'film_work_id'), (1, 2, 'genre_id')]
                 columns = [col[2] for col in index_info]
                 table_indexes.append((index_name, columns))
 
         if table_indexes:
             unique_indexes[table_name] = table_indexes
 
-    conn.close()
-    return unique_indexes
+    # ic(unique_indexes)
 
-# Пример использования
-# db_path = 'db.sqlite'
-# unique_indexes = get_unique_indexes(db_path)
-# for table, indexes in unique_indexes.items():
-#     print(f"Table: {table}")
-#     for index_name, columns in indexes:
-#         print(f"  Unique Index: {index_name}, Columns: {', '.join(columns)}")
+    table_of_unique_indexes = dict()
+
+    print(unique_indexes)
+    print()
+
+
+    for table, indexes in unique_indexes.items():
+        for index_name, columns in indexes:
+            print(*columns)
+            if table not in table_of_unique_indexes:
+                table_of_unique_indexes[table] = []
+            table_of_unique_indexes[table].append({index_name: columns})
+
+    for table, indexes in unique_indexes.items():
+        print(f"Table: {table}")
+        for index_name, columns in indexes:
+            print(f"  Unique Index: {index_name}, Columns: {', '.join(columns)}")
+    return table_of_unique_indexes
+
+
 
 
 def main():
@@ -149,7 +166,14 @@ def main():
     with sqlite3.connect('db.sqlite') as sqlite_conn, psycopg.connect(
         **dsl, row_factory=dict_row, cursor_factory=ClientCursor
     ) as pg_conn:
-        get_all_information_from_sql(sqlite_conn)
+        ic(get_unique_indexes(sqlite_conn))
+        # get_all_information_from_sql(sqlite_conn)
+        # unique_indexes = get_unique_indexes(sqlite_conn)
+        # for table, indexes in unique_indexes.items():
+        #     print(f"Table: {table}")
+        #     for index_name, columns in indexes:
+        #         print(f"  Unique Index: {index_name}, Columns: {', '.join(columns)}")
+
         # Получим все табилцы из PostgreSQL
 
 
