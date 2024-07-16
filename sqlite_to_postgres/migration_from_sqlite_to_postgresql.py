@@ -87,67 +87,44 @@ def get_all_information_from_sql(conn):
     cursor.execute("SELECT * FROM sqlite_master WHERE type='table';")
     tables = cursor.fetchall()
 
-    data_from_all_tables = list()
+    data_from_all_tables = dict()
 
     # Получим название таблиц и SQL-команды для их создания
     for table in tables:
-        list_with_data = [table[2], table[-1]]
-        data_from_all_tables.append(list_with_data)
-
-    # Добавим полученную информацию в класс
-    list_with_classes = list()
-
-    for name_of_table, sql_command in data_from_all_tables:
-        tmp = Data()
-        tmp.name_of_table = name_of_table
-        tmp.sql_command = sql_command
-        list_with_classes.append(tmp)
-
-    # Создадим переменную со списком названий всех таблиц
-    table_names = [entry.name_of_table for entry in list_with_classes]
+        data_from_all_tables[table[2]] = [table[-1]]
 
     unique_indexes = dict()
 
-    for table_name in table_names:
+    for table_name in data_from_all_tables.keys():
+        cursor.execute(f"SELECT * FROM {table_name};")
+        stroki = cursor.fetchall()
+        data_from_all_tables[table_name].append(stroki)
+
+        sql_command = data_from_all_tables[table_name][0]
+        if 'CREATE TABLE IF NOT EXISTS' not in sql_command:
+            sql_command = sql_command.replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS')
+            data_from_all_tables[table_name][0] = sql_command
+
         cursor.execute(f"PRAGMA index_list({table_name});")  # все индексы, которые есть в таблице
         indexes = cursor.fetchall()
-
         table_indexes = []
         for index in indexes:
             index_name = index[1]
             if index[2] == 1:  # Проверяем, является ли индекс уникальным
                 cursor.execute(f"PRAGMA index_info({index_name});")  # все колонки, в которых встречается этот индекс
                 index_info = cursor.fetchall()
-                columns = [col[2] for col in index_info]
-                table_indexes.append((index_name, columns))
-
-        if table_indexes:
-            unique_indexes[table_name] = table_indexes
-
-    # Отладочный вывод уникальных индексов
-    # print(unique_indexes)
-
-    table_of_unique_indexes = dict()
-
-    for table, indexes in unique_indexes.items():
-        for index_name, columns in indexes:
-            if table not in table_of_unique_indexes:
-                table_of_unique_indexes[table] = []
-            table_of_unique_indexes[table].append({index_name: columns})
-
-
-    for attribite in list_with_classes:
-        if attribite.name_of_table in table_of_unique_indexes.keys():
-            attribite.index_info = table_of_unique_indexes[attribite.name_of_table]
-        else:
-            raise Exception('Что-то пошло не так')
-
-        ic(attribite.__dict__)
+                columns = tuple(col[2] for col in index_info)
+                if len(columns) > 1:
+                    table_indexes.append((index_name, columns))
+                    unique_index = ',UNIQUE (' + ', '.join(columns) + ')\n)'
+                    data_from_all_tables[table_name][0] = sql_command[:-1] + unique_index
 
 
 
-    # ic(table_of_unique_indexes)
-    # ic(table_names)
+
+
+
+
     return data_from_all_tables
 
 
@@ -166,7 +143,20 @@ def main():
         **dsl, row_factory=dict_row, cursor_factory=ClientCursor
     ) as pg_conn:
         # get_unique_indexes(sqlite_conn)
-        get_all_information_from_sql(sqlite_conn)
+        tableS = get_all_information_from_sql(sqlite_conn)
+        # ic(a.__dict__)
+
+        for tablename in tableS.keys():
+            print(tableS[tablename][0])
+            cursor = pg_conn.cursor()
+            cursor.execute(f'DROP TABLE {tablename};')
+            cursor.execute(tableS[tablename][0])
+
+
+        # with open('log', 'w') as f:
+        #     for i in a.stroki:
+        #         print(i)
+        #         break
         # unique_indexes = get_unique_indexes(sqlite_conn)
         # for table, indexes in unique_indexes.items():
         #     print(f"Table: {table}")
@@ -174,8 +164,6 @@ def main():
         #         print(f"  Unique Index: {index_name}, Columns: {', '.join(columns)}")
 
         # Получим все табилцы из PostgreSQL
-
-
 
 
 
