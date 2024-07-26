@@ -6,6 +6,7 @@ from psycopg import ClientCursor, connection as _connection
 from psycopg.rows import dict_row
 
 from icecream import ic
+import sys
 
 # Словарь для сопоставления типов данных SQLite с типами Python
 sqlite_to_python_types = {
@@ -24,55 +25,47 @@ class Data:
     pass
 
 
-def create_dataclass_from_table(cursor, table_name: str):
-    # Получаем информацию о колонках таблицы
-    cursor.execute(f"PRAGMA table_info({table_name})")
-    columns = cursor.fetchall()
-
-    # Создаем поля для dataclass
-    fields = [(col[1], sqlite_to_python_types.get(col[2].upper(), str)) for col in columns]
-
-    # Создаем dataclass динамически
-    return make_dataclass(table_name.capitalize(), fields)
-
-def fetch_data_as_dataclass(db_path: str):
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    # Получаем список всех таблиц в базе данных
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = cursor.fetchall()
-
-    data = {}
-
-    for table in tables:
-        # print(table) ################
-        raise Exception('Стоп')
-        table_name = table[0]  # Извлекаем имя таблицы из кортежа
-
-
-
-        # Создаем dataclass для текущей таблицы
-        TableDataClass = create_dataclass_from_table(cursor, table_name)
-
-        # Выполняем запрос для получения данных из текущей таблицы
-        cursor.execute(f"SELECT * FROM {table_name}")
-        rows = cursor.fetchall()
-
-        # Преобразуем строки данных в экземпляры dataclass
-        data[table_name] = [TableDataClass(*row) for row in rows]
-
-    conn.close()
-    return data
-
-# Пример использования
-# db_path = 'db.sqlite'
-# data = fetch_data_as_dataclass(db_path)
+# def create_dataclass_from_table(cursor, table_name: str):
+#     # Получаем информацию о колонках таблицы
+#     cursor.execute(f"PRAGMA table_info({table_name})")
+#     columns = cursor.fetchall()
 #
-# for table_name, records in data.items():
-#     print(f"Table: {table_name}")
-#     for record in records:
-#         print(record)
+#     # Создаем поля для dataclass
+#     fields = [(col[1], sqlite_to_python_types.get(col[2].upper(), str)) for col in columns]
+#
+#     # Создаем dataclass динамически
+#     return make_dataclass(table_name.capitalize(), fields)
+#
+# def fetch_data_as_dataclass(db_path: str):
+#     conn = sqlite3.connect(db_path)
+#     cursor = conn.cursor()
+#
+#     # Получаем список всех таблиц в базе данных
+#     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+#     tables = cursor.fetchall()
+#
+#     data = {}
+#
+#     for table in tables:
+#         # print(table) ################
+#         raise Exception('Стоп')
+#         table_name = table[0]  # Извлекаем имя таблицы из кортежа
+#
+#
+#
+#         # Создаем dataclass для текущей таблицы
+#         TableDataClass = create_dataclass_from_table(cursor, table_name)
+#
+#         # Выполняем запрос для получения данных из текущей таблицы
+#         cursor.execute(f"SELECT * FROM {table_name}")
+#         rows = cursor.fetchall()
+#
+#         # Преобразуем строки данных в экземпляры dataclass
+#         data[table_name] = [TableDataClass(*row) for row in rows]
+#
+#     conn.close()
+#     return data
+
 
 
 def get_all_information_from_sql(conn):
@@ -120,12 +113,29 @@ def get_all_information_from_sql(conn):
                     data_from_all_tables[table_name][0] = sql_command[:-1] + unique_index
 
 
-
-
+    # Внесем информацию о заголовках таблиц
+    for table in data_from_all_tables.keys():
+        sqlite_command = f'PRAGMA table_info({table});'
+        cursor.execute(sqlite_command)
+        data = tuple(i[1] for i in cursor.fetchall())
+        data_from_all_tables[table].append(data)
 
 
 
     return data_from_all_tables
+
+
+def divide_list(lst: list, n: int):
+    '''
+    Генератор, который делит большой список
+    на небольшие
+    '''
+    for i in range(len(lst)//n+1):
+        yield tuple(lst[i*n:i*n+n])
+    # for i in range(len(lst)//n+1):
+    #     yield tuple(
+    #         zip(*lst[i*n:i*n+n])
+    #     )
 
 
 
@@ -138,40 +148,99 @@ def main():
         'port': 5432
     }
 
+    batch_size = 10 # Количество записей, которое будет выгружаться за один раз
+
     # Подключение к базам данных
-    with sqlite3.connect('db.sqlite') as sqlite_conn, psycopg.connect(
+    with (sqlite3.connect('db.sqlite') as sqlite_conn, psycopg.connect(
         **dsl, row_factory=dict_row, cursor_factory=ClientCursor
-    ) as pg_conn:
+    ) as pg_conn):
         # get_unique_indexes(sqlite_conn)
         tableS = get_all_information_from_sql(sqlite_conn)
         # ic(a.__dict__)
 
         for tablename in tableS.keys():
-            print(tableS[tablename][0])
+            # print(tableS[tablename][0])
             cursor = pg_conn.cursor()
             cursor.execute(f'DROP TABLE {tablename};')
-            cursor.execute(tableS[tablename][0])
+            cursor.execute(tableS[tablename][0]) # Создание таблиц по SQL запросу
+
+            data = tableS[tablename][1]
+
+            # Создадим строку, содержащую имена столбцов таблицы
+            # Например id name description created_at updated_at
+            names_of_columns: tuple = tableS[tablename][-1]
+
+            string_for_name_of_columns: str = (', '.join(
+                ['{}' for _ in range(len(names_of_columns))])
+                                               ).format(*names_of_columns)
+
+            string_with_S: str = ', '.join(
+                ['%s' for _ in range(len(names_of_columns))]
+            )
 
 
-        # with open('log', 'w') as f:
-        #     for i in a.stroki:
-        #         print(i)
+            sql_command = f'''
+            INSERT INTO {tablename} ({string_for_name_of_columns})
+            VALUES ({string_with_S})
+            '''
+
+            for batch_of_information in divide_list(data, batch_size):
+                # print(sql_command % batch_of_information)
+                # cursor.execute(sql_command, batch_of_information)
+                print(batch_of_information)
+                sys.exit(3)
+                cursor.executemany(sql_command, formatted_batch)
+
+                # print(sql_command)
+                # print(batch_of_information)
+                # print(len(batch_of_information))
+                # print(sql_command % batch_of_information)
+
+
+
+        # with open('a.txt', 'w') as f:
+        #     for table in tableS.keys():
+        #         # print(tableS[table][1], file=f)
+        #         for batch_of_informaton in tableS[table][1]:
+        #             print(batch_of_informaton)
+        #             break
         #         break
-        # unique_indexes = get_unique_indexes(sqlite_conn)
-        # for table, indexes in unique_indexes.items():
-        #     print(f"Table: {table}")
-        #     for index_name, columns in indexes:
-        #         print(f"  Unique Index: {index_name}, Columns: {', '.join(columns)}")
-
-        # Получим все табилцы из PostgreSQL
 
 
+        # for table in tableS.keys():
+        #     data = tableS[table][1]
+        #     print(data)
+        #     for batch_of_information in divide_list(data, batch_size):
+        #         # print(batch_of_information)
+        #         # print(len(batch_of_information))
+        #         sql_command = f'''
+        #         INSERT INTO {table} ()
+        #         '''
 
-        # ### Начнём с того, что создадим таблицы в PostgreSQL
-        # tables_creation_commands = get_tables_creation_commands(sqlite_conn)
-        #
-        # for i in tables_creation_commands:
-        #     print(i)
+        # for table in tableS.keys():
+        #     data = tableS[table][0]
+        #     print(f'{table}, {data}', end='\n\n')
+        # cursor.execute('PRAGMA table_info(film_work);')
+        # date = cursor.fetchall()
+        # print(date)
+
+        # query = """
+        # SELECT column_name
+        # FROM information_schema.columns
+        # WHERE table_name = 'film_work';
+        # """
+        # cursor.execute(query)
+        # data = cursor.fetchall()
+        # print(data)
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
