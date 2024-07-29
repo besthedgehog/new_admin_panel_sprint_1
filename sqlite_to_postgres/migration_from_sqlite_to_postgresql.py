@@ -187,56 +187,9 @@ def main():
             for batch_of_information in divide_list(data, batch_size):
                 # print(sql_command % batch_of_information)
                 # cursor.execute(sql_command, batch_of_information)
-                print(batch_of_information)
-                sys.exit(3)
-                cursor.executemany(sql_command, formatted_batch)
-
-                # print(sql_command)
                 # print(batch_of_information)
-                # print(len(batch_of_information))
-                # print(sql_command % batch_of_information)
-
-
-
-        # with open('a.txt', 'w') as f:
-        #     for table in tableS.keys():
-        #         # print(tableS[table][1], file=f)
-        #         for batch_of_informaton in tableS[table][1]:
-        #             print(batch_of_informaton)
-        #             break
-        #         break
-
-
-        # for table in tableS.keys():
-        #     data = tableS[table][1]
-        #     print(data)
-        #     for batch_of_information in divide_list(data, batch_size):
-        #         # print(batch_of_information)
-        #         # print(len(batch_of_information))
-        #         sql_command = f'''
-        #         INSERT INTO {table} ()
-        #         '''
-
-        # for table in tableS.keys():
-        #     data = tableS[table][0]
-        #     print(f'{table}, {data}', end='\n\n')
-        # cursor.execute('PRAGMA table_info(film_work);')
-        # date = cursor.fetchall()
-        # print(date)
-
-        # query = """
-        # SELECT column_name
-        # FROM information_schema.columns
-        # WHERE table_name = 'film_work';
-        # """
-        # cursor.execute(query)
-        # data = cursor.fetchall()
-        # print(data)
-
-
-
-
-
+                # sys.exit(3)
+                cursor.executemany(sql_command, batch_of_information)
 
 
 
