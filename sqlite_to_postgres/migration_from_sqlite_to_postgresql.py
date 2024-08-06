@@ -17,56 +17,6 @@ sqlite_to_python_types = {
     "NUMERIC": float
 }
 
-class Data:
-    '''
-    В экземплярах класса будет содеражаться вся информация
-    о таблицах из базы данных
-    '''
-    pass
-
-
-# def create_dataclass_from_table(cursor, table_name: str):
-#     # Получаем информацию о колонках таблицы
-#     cursor.execute(f"PRAGMA table_info({table_name})")
-#     columns = cursor.fetchall()
-#
-#     # Создаем поля для dataclass
-#     fields = [(col[1], sqlite_to_python_types.get(col[2].upper(), str)) for col in columns]
-#
-#     # Создаем dataclass динамически
-#     return make_dataclass(table_name.capitalize(), fields)
-#
-# def fetch_data_as_dataclass(db_path: str):
-#     conn = sqlite3.connect(db_path)
-#     cursor = conn.cursor()
-#
-#     # Получаем список всех таблиц в базе данных
-#     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-#     tables = cursor.fetchall()
-#
-#     data = {}
-#
-#     for table in tables:
-#         # print(table) ################
-#         raise Exception('Стоп')
-#         table_name = table[0]  # Извлекаем имя таблицы из кортежа
-#
-#
-#
-#         # Создаем dataclass для текущей таблицы
-#         TableDataClass = create_dataclass_from_table(cursor, table_name)
-#
-#         # Выполняем запрос для получения данных из текущей таблицы
-#         cursor.execute(f"SELECT * FROM {table_name}")
-#         rows = cursor.fetchall()
-#
-#         # Преобразуем строки данных в экземпляры dataclass
-#         data[table_name] = [TableDataClass(*row) for row in rows]
-#
-#     conn.close()
-#     return data
-
-
 
 def get_all_information_from_sql(conn):
     '''
@@ -132,12 +82,6 @@ def divide_list(lst: list, n: int):
     '''
     for i in range(len(lst)//n+1):
         yield tuple(lst[i*n:i*n+n])
-    # for i in range(len(lst)//n+1):
-    #     yield tuple(
-    #         zip(*lst[i*n:i*n+n])
-    #     )
-
-
 
 def main():
     dsl = {
@@ -185,10 +129,6 @@ def main():
             '''
 
             for batch_of_information in divide_list(data, batch_size):
-                # print(sql_command % batch_of_information)
-                # cursor.execute(sql_command, batch_of_information)
-                # print(batch_of_information)
-                # sys.exit(3)
                 cursor.executemany(sql_command, batch_of_information)
 
 
