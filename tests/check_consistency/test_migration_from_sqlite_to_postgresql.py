@@ -1,8 +1,7 @@
 import sqlite3
 import psycopg
-from psycopg import ClientCursor, connection as _connection
+from psycopg import ClientCursor
 from psycopg.rows import dict_row
-from icecream import ic
 import sys
 import os
 from datetime import datetime
@@ -94,8 +93,6 @@ def check_equality_of_data(data_from_sqlite, data_from_postgres):
     полученных из двух баз данных
     '''
 
-
-
     # Для начала проверим совпадение таблиц
     assert set(data_from_sqlite.keys()) == set(data_from_postgres.keys()), 'Таблицы не совпадают'
 
@@ -111,9 +108,7 @@ def check_equality_of_data(data_from_sqlite, data_from_postgres):
                     print(f'sqlite {data_from_sqlite[table][i]}')
                     print()
                     print(f'Postgre {data_from_postgres[table][i]}')
-                    sys.exit(3)
-
-
+                    return False
 
     return True
 
@@ -137,8 +132,6 @@ def main():
 
 
         print(check_equality_of_data(data_from_sqlite, data_from_postgre))
-
-
 
 
 if __name__ == '__main__':
