@@ -15,33 +15,13 @@ from sqlite_to_postgres.migration_from_sqlite_to_postgresql \
 import get_all_information_from_sql as get_all_information_from_sqlite
 
 
-# def get_all_information_from_sqlite(conn):
-#     cursor = conn.cursor()
-#     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-#     all_tables_in_sqlite = tuple(i[0] for i in cursor.fetchall())
-#     print(all_tables_in_sqlite)
-
-#     sqlite_command = '''
-#     SELECT * from {};
-#     '''
-
-#     all_the_data_from_sqlite = dict()
-
-#     for table in all_tables_in_sqlite:
-#         cursor.execute(sqlite_command.format(table))
-#         all_the_data_from_the_table = cursor.fetchall()
-#         print(all_the_data_from_the_table)
-#         sys.exit(3)
-
-
-
-# def transform_datetime(dt: datetime) -> str:
-#     formatted_datetime = dt.strftime('%Y-%m-%d %H:%M:%S.%f%z')
-#     return formatted_datetime
-
 def transform_datetime(dt: datetime) -> str:
     formatted_datetime = dt.strftime('%Y-%m-%d %H:%M:%S.%f')
     formatted_timezone = dt.strftime('%z')[:3]  # Take only the first three characters of the timezone
+
+    while formatted_datetime[-1] == '0': # Уберём незначащие нули
+        formatted_datetime = formatted_datetime[:-1]
+
     return f"{formatted_datetime}{formatted_timezone}"
 
 
@@ -78,16 +58,13 @@ def get_all_information_from_postgre(conn):
 
 
     for table in list_with_necessary_tables:
-        #### Исправить
-        # table = 'genre'
+
         cursor.execute(sql_comamnd.format(table))
 
         # Список со словарями
         # Для таблицы genre
         # [{id: ..., name: ..., description: ..., created_at, updated_at: ...}]
         data_from_table = cursor.fetchall() # Вся инормация из одной таблицы
-
-        # print(f'data_from_table = {data_from_table[0]}')
 
         list_with_data = list()
 
@@ -108,16 +85,37 @@ def get_all_information_from_postgre(conn):
         data[table] = list_with_data
 
 
-    # print(data.keys())
-    # print(data['genre'])
-    # print(data)
     return data
 
 
+def check_equality_of_data(data_from_sqlite, data_from_postgres):
+    '''
+    Функция проверяет равенство данных
+    полученных из двух баз данных
+    '''
 
 
 
+    # Для начала проверим совпадение таблиц
+    assert set(data_from_sqlite.keys()) == set(data_from_postgres.keys()), 'Таблицы не совпадают'
 
+    for table in data_from_sqlite.keys():
+        data_from_sqlite[table] = data_from_sqlite[table][1]
+
+        # В ходе обработки данных порядок записей мог сбиться, поэтому
+        # Нужно сравнивать множества или применять сортировку
+        if set(data_from_sqlite[table]) != set(data_from_postgres[table]):
+            print(f'Несовпадение в таблице {table}')
+            for i in range(len(data_from_sqlite[table])):
+                if data_from_sqlite[table][i] != data_from_postgres[table][i]:
+                    print(f'sqlite {data_from_sqlite[table][i]}')
+                    print()
+                    print(f'Postgre {data_from_postgres[table][i]}')
+                    sys.exit(3)
+
+
+
+    return True
 
 
 dsl = {
@@ -138,30 +136,7 @@ def main():
         data_from_postgre = get_all_information_from_postgre(pg_conn)
 
 
-
-        print('from sqlite')
-        print(
-            data_from_sqlite['genre'][1][0]
-        )
-
-        print()
-
-        print('from postgre')
-
-        # for i in data_from_postgre['genre'][0]:
-        #     print(i)
-        #     print()
-        print(
-            data_from_postgre['genre'][0]
-        )
-
-
-
-
-
-
-
-
+        print(check_equality_of_data(data_from_sqlite, data_from_postgre))
 
 
 
