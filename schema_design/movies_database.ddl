@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS content.genre_film_work (
     film_work_id uuid NOT NULL,
     created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (genre_id) REFERENCES content.genre(id),
-    FOREIGN KEY (film_work_id) REFERENCES content.film_work(id)
+    FOREIGN KEY (film_work_id) REFERENCES content.film_work(id),
+    CONSTRAINT unique_film_genre UNIQUE (film_work_id, genre_id)
 );
 
 CREATE TABLE IF NOT EXISTS content.person (
@@ -30,7 +31,7 @@ CREATE TABLE IF NOT EXISTS content.film_work (
     title TEXT NOT NULL,
     description TEXT,
     creation_date DATE,
-    rating FLOAT,
+    rating FLOAT CHECK (rating >= 0 AND rating <= 100),
     type TEXT NOT NULL,
     created timestamp with time zone,
     modified timestamp with time zone
@@ -48,4 +49,4 @@ CREATE TABLE IF NOT EXISTS content.person_film_work (
 );
 
 CREATE INDEX film_work_creation_date_idx ON content.film_work(creation_date);
-CREATE UNIQUE INDEX film_work_person_idx ON content.person_film_work (film_work_id, person_id);
+CREATE UNIQUE INDEX film_work_person_role_idx ON content.person_film_work (film_work_id, person_id, role);
