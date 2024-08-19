@@ -1,5 +1,6 @@
 import sqlite3
 from dataclasses import make_dataclass
+from dataclasses import dataclass
 
 import psycopg
 from psycopg import ClientCursor, connection as _connection
@@ -7,6 +8,12 @@ from psycopg.rows import dict_row
 
 from icecream import ic
 import sys
+
+
+@dataclass
+class Table:
+    name: str
+    sql_creation_command: str
 
 # Словарь для сопоставления типов данных SQLite с типами Python
 sqlite_to_python_types = {
@@ -24,55 +31,83 @@ def get_all_information_from_sql(conn):
     для создания всех таблиц
     '''
 
-    cursor = conn.cursor()
+    # В этой переменной хранится список экземпляров 
+    # класса Table
+    all_tables: list = list()
 
     # Получаем список всех таблиц в базе данных
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM sqlite_master WHERE type='table';")
-    tables = cursor.fetchall()
+    info_about_tables = cursor.fetchall()
 
-    data_from_all_tables = dict()
+    for table in info_about_tables:
+        all_tables.append(Table(table[1], table[4]))  
 
-    # Получим название таблиц и SQL-команды для их создания
-    for table in tables:
-        data_from_all_tables[table[2]] = [table[-1]]
+    # кортеж с названиями всех таблиц
+    names_of_tables: tuple = tuple(i.name for i in all_tables)
+    print(names_of_tables)
 
-    unique_indexes = dict()
+    # экземпляр класса в списке всех экземпляров
+    for table_instance in all_tables:
 
-    for table_name in data_from_all_tables.keys():
-        cursor.execute(f"SELECT * FROM {table_name};")
-        stroki = cursor.fetchall()
-        data_from_all_tables[table_name].append(stroki)
+        table_instance.sql_creation_command = (
+            table_instance.sql_creation_command
+                .replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS')
+        )
 
-        sql_command = data_from_all_tables[table_name][0]
-        if 'CREATE TABLE IF NOT EXISTS' not in sql_command:
-            sql_command = sql_command.replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS')
-            data_from_all_tables[table_name][0] = sql_command
+        # получим все данные
+        cursor.execute(f"SELECT * FROM {table_instance.name};")
+        all_data = list()
 
-        cursor.execute(f"PRAGMA index_list({table_name});")  # все индексы, которые есть в таблице
+        # Извлечём данные по частям 
+        n: int = 100 
+        while True:
+            piece_of_data: tuple = cursor.fetchmany(n)
+            if not piece_of_data:
+                break
+            else:
+                all_data.append(piece_of_data)
+            
+        table_instance.all_data = all_data
+
+        cursor.execute(f"PRAGMA index_list({table_instance.name});")
+
         indexes = cursor.fetchall()
-        table_indexes = []
         for index in indexes:
+
+            # Название индекса
             index_name = index[1]
-            if index[2] == 1:  # Проверяем, является ли индекс уникальным
-                cursor.execute(f"PRAGMA index_info({index_name});")  # все колонки, в которых встречается этот индекс
+
+            # Если индекс уникальный
+            if index[2] == 1:
+
+                # Получим все колонки, в которых встречается этот индекс
+                cursor.execute(f"PRAGMA index_info({index_name});") # [(0, 0, 'id')]
                 index_info = cursor.fetchall()
                 columns = tuple(col[2] for col in index_info)
+
                 if len(columns) > 1:
-                    table_indexes.append((index_name, columns))
-                    unique_index = ',UNIQUE (' + ', '.join(columns) + ')\n)'
-                    data_from_all_tables[table_name][0] = sql_command[:-1] + unique_index
+                    unique_index = ',\n    UNIQUE (' + ', '.join(columns) + ')\n)'
+                    table_instance.sql_creation_command = (
+                        table_instance.sql_creation_command[:-2] + unique_index
+                    )
 
 
-    # Внесем информацию о заголовках таблиц
-    for table in data_from_all_tables.keys():
-        sqlite_command = f'PRAGMA table_info({table});'
+        sqlite_command = f'PRAGMA table_info({table_instance.name});'
         cursor.execute(sqlite_command)
-        data = tuple(i[1] for i in cursor.fetchall())
-        data_from_all_tables[table].append(data)
+        table_instance.name_of_columns = (
+            tuple(i[1] for i in cursor.fetchall())
+        )
+
+        print(table_instance.name_of_columns)
+        sys.exit()
 
 
 
-    return data_from_all_tables
+
+
+
+
 
 
 def divide_list(lst: list, n: int):
@@ -99,37 +134,7 @@ def main():
         **dsl, row_factory=dict_row, cursor_factory=ClientCursor
     ) as pg_conn):
         # get_unique_indexes(sqlite_conn)
-        tableS = get_all_information_from_sql(sqlite_conn)
-        # ic(a.__dict__)
-
-        for tablename in tableS.keys():
-            # print(tableS[tablename][0])
-            cursor = pg_conn.cursor()
-            cursor.execute(f'DROP TABLE {tablename};')
-            cursor.execute(tableS[tablename][0]) # Создание таблиц по SQL запросу
-
-            data = tableS[tablename][1]
-
-            # Создадим строку, содержащую имена столбцов таблицы
-            # Например id name description created_at updated_at
-            names_of_columns: tuple = tableS[tablename][-1]
-
-            string_for_name_of_columns: str = (', '.join(
-                ['{}' for _ in range(len(names_of_columns))])
-                                               ).format(*names_of_columns)
-
-            string_with_S: str = ', '.join(
-                ['%s' for _ in range(len(names_of_columns))]
-            )
-
-
-            sql_command = f'''
-            INSERT INTO {tablename} ({string_for_name_of_columns})
-            VALUES ({string_with_S})
-            '''
-
-            for batch_of_information in divide_list(data, batch_size):
-                cursor.executemany(sql_command, batch_of_information)
+        get_all_information_from_sql(sqlite_conn)
 
 
 
@@ -139,10 +144,3 @@ def main():
 if __name__ == '__main__':
     main()
 
-
-# АЛКОритм
-# Получить все данных из SQLite (названия таблиц, команды создания таблиц, строки из таблиц, ограничения таблиц (уникальность))
-# Создать все таблицы в PostgreSQL c помощью названий и команд
-# Создать все ограничения для таблиц в PostgreSQL (массив имён колонок таблицы с уникальными значеними)
-# Вставляем данные из SQLite в PostgreSQL
-# Сравнение данных в таблицах SQLite с PostgreSQL
