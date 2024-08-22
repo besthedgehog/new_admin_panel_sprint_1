@@ -1,27 +1,8 @@
-from django.db import models
-
 # Create your models here.
-import uuid
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
-
-
-# Определим два миксина
-class TimeStampedMixin(models.Model):
-    created = models.DateTimeField(_('created'), auto_now_add=True)
-    modified = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        # Этот параметр указывает Django, что этот класс не является представлением таблицы
-        abstract = True
-
-
-class UUIDMixin(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    class Meta:
-        abstract = True
+from .mixins import TimeStampedMixin, UUIDMixin
 
 
 class Genre(UUIDMixin, TimeStampedMixin):
@@ -69,7 +50,9 @@ class Filmwork(UUIDMixin, TimeStampedMixin):
         db_table = "content\".\"filmwork"
         verbose_name = _('Filmwork')
         verbose_name_plural = _('Filmworks')
-
+        indexes = [
+            models.Index(fields=['created'], name='film_work_creation_date_idx')
+        ]
     rating = models.FloatField(_('rating'), blank=True,
                                validators=[MinValueValidator(0),
                                            MaxValueValidator(100)]
@@ -90,7 +73,16 @@ class GenreFilmwork(UUIDMixin):
 
     class Meta:
         db_table = "content\".\"genre_film_work"
-
+        indexes = [
+            models.Index(fields=['film_work'], name='genre_film_work_filmwork_idx'),
+            models.Index(fields=['genre'], name='genre_film_work_genre_idx'),
+            # Индекс для двух полей film_work и genre
+            models.Index(fields=['film_work', 'genre'], name='genre_film_work_fw_genre_idx'),
+        ]
+        constraints = [
+            # Уникальное ограничение для сочетания film_work и genre
+            models.UniqueConstraint(fields=['film_work', 'genre'], name='unique_film_genre')
+        ]
 
 
 class Person(models.Model):
@@ -105,7 +97,22 @@ class Person(models.Model):
         return self.name
 
 class PersonFilmwork(UUIDMixin):
+    class Role(models.TextChoices):
+        DIRECTOR = 'DIR', _('Director')
+        ACTOR = 'ACT', _('Actor')
+        PRODUCER = 'PROD', _('Producer')
+        WRITER = 'WRIT', _('Writer')
+        CINEMATOGRAPHER = 'CINE', _('Cinematographer')
+        EDITOR = 'EDIT', _('Editor')
+        OTHER = 'OTH', _('Other')
+
     film_work = models.ForeignKey('Filmwork', on_delete=models.CASCADE)
     person = models.ForeignKey('Person', on_delete=models.CASCADE)
-    role = models.TextField('role')
+    role = models.CharField(_('role'), max_length=20, choices=Role.choices, default=Role.OTHER)
     created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "content\".\"person_film_work"
+        indexes = [
+            models.Index(fields=['film_work', 'person', 'role'], name='film_work_person_role_idx')
+        ]

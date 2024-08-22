@@ -6,8 +6,8 @@ import psycopg
 from psycopg import ClientCursor, connection as _connection
 from psycopg.rows import dict_row
 
-from icecream import ic
 import sys
+import yaml
 
 
 @dataclass
@@ -43,18 +43,17 @@ def get_all_information_from_sql(conn):
     for table in info_about_tables:
         all_tables.append(Table(table[1], table[4]))  
 
-    # кортеж с названиями всех таблиц
-    names_of_tables: tuple = tuple(i.name for i in all_tables)
-    print(names_of_tables)
-
     # экземпляр класса в списке всех экземпляров
     for table_instance in all_tables:
 
-        table_instance.sql_creation_command = (
-            table_instance.sql_creation_command
-                .replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS')
-        )
+        
 
+        if 'IF NOT EXISTS' not in table_instance.sql_creation_command:
+            table_instance.sql_creation_command = (
+                table_instance.sql_creation_command
+                    .replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS')
+            )
+        
         # получим все данные
         cursor.execute(f"SELECT * FROM {table_instance.name};")
         all_data = list()
@@ -98,16 +97,8 @@ def get_all_information_from_sql(conn):
         table_instance.name_of_columns = (
             tuple(i[1] for i in cursor.fetchall())
         )
-
-        print(table_instance.name_of_columns)
-        sys.exit()
-
-
-
-
-
-
-
+    
+    return all_tables
 
 
 def divide_list(lst: list, n: int):
@@ -119,12 +110,16 @@ def divide_list(lst: list, n: int):
         yield tuple(lst[i*n:i*n+n])
 
 def main():
+
+    with open('config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+    
     dsl = {
-        'dbname': 'movies_database',
-        'user': 'app',
-        'password': '123qwe',
-        'host': '127.0.0.1',
-        'port': 5432
+    'dbname': config['database']['name'],
+    'user': config['database']['user'],
+    'password': config['database']['password'],
+    'host': config['database']['host'],
+    'port': config['database']['port']
     }
 
     batch_size = 10 # Количество записей, которое будет выгружаться за один раз
@@ -133,12 +128,41 @@ def main():
     with (sqlite3.connect('db.sqlite') as sqlite_conn, psycopg.connect(
         **dsl, row_factory=dict_row, cursor_factory=ClientCursor
     ) as pg_conn):
-        # get_unique_indexes(sqlite_conn)
-        get_all_information_from_sql(sqlite_conn)
+
+        cursor = pg_conn.cursor()
+
+        tableSQLite = get_all_information_from_sql(sqlite_conn)
+        
+        for table in tableSQLite:
+            # Удалим существующие таблицы с такими именами
+            cursor.execute(f'DROP TABLE IF EXISTS {table.name};')
+
+            
+
+            # Создадим таблицы в Postgre
+            cursor.execute(f'{table.sql_creation_command}')
+
+            # Создадим строку, содержащую имена столбцов таблицы
+            # Например id name description created_at updated_at
+            names_of_columns: tuple = table.name_of_columns
+
+            string_for_name_of_columns: str = (', '.join(
+                ['{}' for _ in range(len(names_of_columns))])
+            ).format(*names_of_columns)
+            
 
 
+            string_with_S: str = ', '.join(
+                ['%s' for _ in range(len(names_of_columns))]
+            )
 
+            sql_command = f'''
+            INSERT INTO {table.name} ({string_for_name_of_columns})
+            VALUES ({string_with_S})
+            '''
 
+            for batch_of_information in divide_list(table.all_data[0], batch_size):
+                cursor.executemany(sql_command, batch_of_information)
 
 
 if __name__ == '__main__':

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/NewDjango.iml" filepath="$PROJECT_DIR$/.idea/NewDjango.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/new_admin_panel_sprint_1.iml" filepath="$PROJECT_DIR$/.idea/new_admin_panel_sprint_1.iml" />
     </modules>
   </component>
 </project>
