@@ -5,6 +5,7 @@ from psycopg.rows import dict_row
 import sys
 import os
 from datetime import datetime
+import yaml
 
 # Добавим родительскую директорию в sys.path чтобы разрешить абсолютные импорты
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -16,7 +17,7 @@ import get_all_information_from_sql as get_all_information_from_sqlite
 
 def transform_datetime(dt: datetime) -> str:
     formatted_datetime = dt.strftime('%Y-%m-%d %H:%M:%S.%f')
-    formatted_timezone = dt.strftime('%z')[:3]  # Take only the first three characters of the timezone
+    formatted_timezone = dt.strftime('%z')[:3]  
 
     while formatted_datetime[-1] == '0': # Уберём незначащие нули
         formatted_datetime = formatted_datetime[:-1]
@@ -48,13 +49,11 @@ def get_all_information_from_postgre(conn):
 
     assert set(list_with_necessary_tables).issubset(set(all_tables)), 'В PostgreSQL не все таблицы'
 
-
     data = dict()
 
     sql_comamnd = '''
         SELECT * from {};
     '''
-
 
     for table in list_with_necessary_tables:
 
@@ -94,17 +93,19 @@ def check_equality_of_data(data_from_sqlite, data_from_postgres):
     '''
 
     # Для начала проверим совпадение таблиц
-    assert set(data_from_sqlite.keys()) == set(data_from_postgres.keys()), 'Таблицы не совпадают'
+    tables_from_sqlite = tuple(i.name for i in data_from_sqlite)
+    assert set(tables_from_sqlite) == set(data_from_postgres.keys()), 'Таблицы не совпадают'
 
-    for table in data_from_sqlite.keys():
-        data_from_sqlite[table] = data_from_sqlite[table][1]
+    for table in data_from_sqlite:
 
         # В ходе обработки данных порядок записей мог сбиться, поэтому
         # Нужно сравнивать множества или применять сортировку
-        if set(data_from_sqlite[table]) != set(data_from_postgres[table]):
+        if set(tuple(table.all_data[0])) != set(data_from_postgres[table.name]):
+
             print(f'Несовпадение в таблице {table}')
-            for i in range(len(data_from_sqlite[table])):
-                if data_from_sqlite[table][i] != data_from_postgres[table][i]:
+
+            for i in range(len(table.all_data[0])):
+                if table.all_data[0][i] != data_from_postgres[table][i]:
                     print(f'sqlite {data_from_sqlite[table][i]}')
                     print()
                     print(f'Postgre {data_from_postgres[table][i]}')
@@ -113,12 +114,19 @@ def check_equality_of_data(data_from_sqlite, data_from_postgres):
     return True
 
 
+def load_yaml_config(filename):
+    with open(filename, 'r') as file:
+        return yaml.safe_load(file)
+
+
+config = load_yaml_config('config.yaml')
+
 dsl = {
-    'dbname': 'movies_database',
-    'user': 'app',
-    'password': '123qwe',
-    'host': '127.0.0.1',
-    'port': 5432
+    'dbname': config['database_config']['dbname'],
+    'user': config['database_config']['user'],
+    'password': config['database_config']['password'],
+    'host': config['database_config']['host'],
+    'port': config['database_config']['port']
 }
 
 def main():
@@ -129,7 +137,6 @@ def main():
         data_from_sqlite = get_all_information_from_sqlite(sqlite_conn)
 
         data_from_postgre = get_all_information_from_postgre(pg_conn)
-
 
         print(check_equality_of_data(data_from_sqlite, data_from_postgre))
 
